@@ -1,0 +1,16 @@
+README.md
+pyproject.toml
+cvat_ultralytics_bot/__init__.py
+cvat_ultralytics_bot/annotator.py
+cvat_ultralytics_bot/cli.py
+cvat_ultralytics_bot/cvat_utils.py
+cvat_ultralytics_bot/models.py
+cvat_ultralytics_bot.egg-info/PKG-INFO
+cvat_ultralytics_bot.egg-info/SOURCES.txt
+cvat_ultralytics_bot.egg-info/dependency_links.txt
+cvat_ultralytics_bot.egg-info/entry_points.txt
+cvat_ultralytics_bot.egg-info/requires.txt
+cvat_ultralytics_bot.egg-info/top_level.txt
+tests/test_annotator.py
+tests/test_cli.py
+tests/test_cvat_utils.py
