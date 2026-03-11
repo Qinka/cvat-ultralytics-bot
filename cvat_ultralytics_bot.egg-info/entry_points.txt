@@ -1,0 +1,2 @@
+[console_scripts]
+cvat-bot = cvat_ultralytics_bot.cli:app
