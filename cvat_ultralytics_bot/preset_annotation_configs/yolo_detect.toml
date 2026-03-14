@@ -1,0 +1,10 @@
+tool = "yolo_detect"
+
+[yolo_detect]
+weights = "yolo26n.pt"
+conf = 0.25
+device = "cpu"
+replace = false
+
+[yolo_detect.label_map]
+# person = "person"

@@ -6,14 +6,19 @@ from typing import TYPE_CHECKING
 
 from cvat_sdk import make_client
 from cvat_sdk.core.proxies.annotations import AnnotationUpdateAction
-from cvat_sdk.models import LabeledDataRequest, LabeledShapeRequest, ShapeType
+from cvat_sdk.models import (
+    LabeledDataRequest,
+    LabeledShapeRequest,
+    PatchedLabeledDataRequest,
+    ShapeType,
+)
 
 if TYPE_CHECKING:
     from cvat_sdk import Client
     from cvat_sdk.core.proxies.tasks import Task
     from cvat_sdk.models import IFrameMeta, ILabel
 
-    from .models import Detection
+    from .types import Detection
 
 
 def create_client(
@@ -150,8 +155,9 @@ def upload_annotations(
         replace: If ``True``, the existing annotations are fully replaced.
             If ``False`` (default), new shapes are appended.
     """
-    data = LabeledDataRequest(shapes=shapes)
     if replace:
+        data = LabeledDataRequest(shapes=shapes)
         task.set_annotations(data)
     else:
+        data = PatchedLabeledDataRequest(shapes=shapes)
         task.update_annotations(data, action=AnnotationUpdateAction.CREATE)

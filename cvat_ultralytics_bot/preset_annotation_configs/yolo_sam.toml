@@ -1,0 +1,11 @@
+tool = "yolo_sam"
+
+[yolo_sam]
+yolo_weights = "yolo26n.pt"
+sam_weights = "sam2_b.pt"
+conf = 0.25
+device = "cpu"
+replace = false
+
+[yolo_sam.label_map]
+# person = "person"
