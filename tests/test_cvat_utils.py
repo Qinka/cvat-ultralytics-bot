@@ -12,7 +12,7 @@ from cvat_ultralytics_bot.cvat_utils import (
     detections_to_shapes,
     upload_annotations,
 )
-from cvat_ultralytics_bot.types import Detection
+from cvat_ultralytics_bot.types import PredictedObject
 
 
 def _make_label(name: str, label_id: int) -> MagicMock:
@@ -48,7 +48,7 @@ class TestBuildLabelMap:
 
 class TestDetectionsToShapes:
     def test_rectangle_from_bbox(self):
-        det = Detection(
+        det = PredictedObject(
             class_name="person",
             confidence=0.9,
             bbox_xyxy=[10.0, 20.0, 100.0, 200.0],
@@ -62,7 +62,7 @@ class TestDetectionsToShapes:
         assert s.points == [10.0, 20.0, 100.0, 200.0]
 
     def test_polygon_preferred_when_available(self):
-        det = Detection(
+        det = PredictedObject(
             class_name="person",
             confidence=0.8,
             bbox_xyxy=[10.0, 20.0, 100.0, 200.0],
@@ -75,7 +75,7 @@ class TestDetectionsToShapes:
         assert s.points == [10.0, 20.0, 100.0, 20.0, 100.0, 200.0]
 
     def test_falls_back_to_rectangle_when_polygon_too_short(self):
-        det = Detection(
+        det = PredictedObject(
             class_name="car",
             confidence=0.7,
             bbox_xyxy=[5.0, 5.0, 50.0, 50.0],
@@ -86,7 +86,7 @@ class TestDetectionsToShapes:
         assert str(shapes[0].type) == "rectangle"
 
     def test_unmapped_class_skipped(self):
-        det = Detection(
+        det = PredictedObject(
             class_name="unknown_class",
             confidence=0.9,
             bbox_xyxy=[0.0, 0.0, 10.0, 10.0],
@@ -95,7 +95,7 @@ class TestDetectionsToShapes:
         assert shapes == []
 
     def test_class_name_matched_case_insensitively(self):
-        det = Detection(
+        det = PredictedObject(
             class_name="Person",
             confidence=0.9,
             bbox_xyxy=[0.0, 0.0, 10.0, 10.0],
@@ -107,8 +107,8 @@ class TestDetectionsToShapes:
 
     def test_multiple_detections(self):
         dets = [
-            Detection("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
-            Detection("car", 0.8, [20.0, 20.0, 60.0, 60.0]),
+            PredictedObject("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
+            PredictedObject("car", 0.8, [20.0, 20.0, 60.0, 60.0]),
         ]
         shapes = detections_to_shapes(dets, frame_id=2, label_map={"person": 1, "car": 2}, use_polygon=False)
         assert len(shapes) == 2
@@ -120,7 +120,7 @@ class TestUploadAnnotations:
     def test_append_uses_patched_request(self):
         task = MagicMock()
         shapes = [
-            Detection("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
+            PredictedObject("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
         ]
         labeled_shapes = detections_to_shapes(shapes, frame_id=0, label_map={"person": 1}, use_polygon=False)
 
@@ -134,7 +134,7 @@ class TestUploadAnnotations:
     def test_replace_uses_full_request(self):
         task = MagicMock()
         shapes = [
-            Detection("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
+            PredictedObject("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
         ]
         labeled_shapes = detections_to_shapes(shapes, frame_id=0, label_map={"person": 1}, use_polygon=False)
 

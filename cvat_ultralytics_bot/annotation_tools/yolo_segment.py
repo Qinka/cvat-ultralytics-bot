@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from cvat_ultralytics_bot.annotation_tools.base import AnnotationToolRegistration
 from cvat_ultralytics_bot.annotation_tools.registry import register_tool
-from cvat_ultralytics_bot.types import Detection
+from cvat_ultralytics_bot.types import PredictedObject
 
 if TYPE_CHECKING:
     from PIL.Image import Image
@@ -26,9 +26,9 @@ class YoloSegmentTool:
         self._model = YOLO(self.weights)
         self.tool_name = "yolo_segment"
 
-    def predict(self, image: "Image", conf: float = 0.25) -> list[Detection]:
+    def predict(self, image: "Image", conf: float = 0.25) -> list[PredictedObject]:
         results = self._model.predict(image, conf=conf, device=self.device, verbose=False)
-        detections: list[Detection] = []
+        predictions: list[PredictedObject] = []
         for result in results:
             if result.boxes is None:
                 continue
@@ -39,15 +39,15 @@ class YoloSegmentTool:
                 polygon: list[float] | None = None
                 if masks is not None and index < len(masks.xy):
                     polygon = masks.xy[index].flatten().tolist()
-                detections.append(
-                    Detection(
+                predictions.append(
+                    PredictedObject(
                         class_name=self._model.names[cls_id],
                         confidence=float(boxes.conf[index].item()),
                         bbox_xyxy=boxes.xyxy[index].tolist(),
                         polygon_xy=polygon,
                     )
                 )
-        return detections
+        return predictions
 
 
 def build_tool(config: dict[str, Any]):

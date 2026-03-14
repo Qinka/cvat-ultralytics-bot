@@ -88,9 +88,9 @@ def write_presets(
 
 @app.command()
 def annotate(
-    task_id: int = typer.Argument(
+    task_ids: list[int] = typer.Argument(
         ...,
-        help="CVAT 任务 ID（数字）。",
+        help="CVAT 任务 ID（数字），可指定多个。",
     ),
     connection_config: Path = typer.Option(
         ...,
@@ -105,10 +105,11 @@ def annotate(
         help="标注配置 TOML 文件路径，或内置预设文件名。",
     ),
 ) -> None:
-    """对 CVAT 任务 TASK_ID 中的图像帧执行自动标注。
+    """对 CVAT 任务中的图像帧执行自动标注。
 
     程序会读取连接配置和标注配置，连接到 CVAT，逐帧获取图像并通过指定工具执行推理，
     然后将结果作为标注写回到任务中。
+    支持一次指定多个任务 ID 进行批量处理。
     """
     from .annotator import annotate_task, build_model
     from .annotation_tools import discover_tools, get_tool_registration
@@ -146,50 +147,55 @@ def annotate(
         typer.echo(f"[ERROR] 连接 CVAT 失败：{exc}", err=True)
         raise typer.Exit(code=1)
 
-    try:
-        typer.echo(f"[INFO] 获取任务 ID={task_id}")
-        task = get_task(client, task_id)
-    except Exception as exc:  # noqa: BLE001
-        typer.echo(f"[ERROR] 获取任务失败：{exc}", err=True)
-        raise typer.Exit(code=1)
+    # ---------- Annotate each task ----------
+    total_shapes = 0
+    for task_id in task_ids:
+        try:
+            typer.echo(f"[INFO] 获取任务 ID={task_id}")
+            task = get_task(client, task_id)
+        except Exception as exc:  # noqa: BLE001
+            typer.echo(f"[ERROR] 获取任务失败：{exc}", err=True)
+            raise typer.Exit(code=1)
 
-    # ---------- Annotate ----------
-    frames_info = task.get_frames_info()
-    total_frames = (
-        len(ann.frame_ids) if ann.frame_ids is not None else len(frames_info)
-    )
-    typer.echo(
-        f"[INFO] 开始标注任务 ID={task_id}，共 {total_frames} 帧"
-        f"{'（全量）' if ann.frame_ids is None else '（指定帧）'}。"
-    )
-
-    def _progress(done: int, total: int) -> None:
-        pct = done * 100 // total
-        typer.echo(f"[INFO]   帧 {done}/{total}  ({pct}%)")
-
-    def _frame_result(frame_id: int, detection_count: int, uploaded_count: int) -> None:
+        frames_info = task.get_frames_info()
+        n_frames = len(ann.frame_ids) if ann.frame_ids is not None else len(frames_info)
         typer.echo(
-            f"[INFO]   frame_id={frame_id} detected={detection_count} uploaded={uploaded_count}"
+            f"[INFO] 开始标注任务 ID={task_id}，共 {n_frames} 帧"
+            f"{'（全量）' if ann.frame_ids is None else '（指定帧）'}。"
         )
 
-    try:
-        n_shapes = annotate_task(
-            task=task,
-            model=model,
-            use_polygon=registration.use_polygon,
-            conf=ann.conf,
-            user_label_map=ann.label_map,
-            replace=ann.replace,
-            frame_ids=ann.frame_ids,
-            progress_callback=_progress,
-            frame_result_callback=_frame_result,
+        def _progress(done: int, total: int) -> None:
+            pct = done * 100 // total
+            typer.echo(f"[INFO]   帧 {done}/{total}  ({pct}%)")
+
+        def _frame_result(frame_id: int, detection_count: int, uploaded_count: int) -> None:
+            typer.echo(
+                f"[INFO]   frame_id={frame_id} detected={detection_count} uploaded={uploaded_count}"
+            )
+
+        try:
+            n_shapes = annotate_task(
+                task=task,
+                model=model,
+                use_polygon=registration.use_polygon,
+                conf=ann.conf,
+                user_label_map=ann.label_map,
+                replace=ann.replace,
+                frame_ids=ann.frame_ids,
+                progress_callback=_progress,
+                frame_result_callback=_frame_result,
+            )
+        except Exception as exc:  # noqa: BLE001
+            typer.echo(f"[ERROR] 标注过程出错：{exc}", err=True)
+            raise typer.Exit(code=1)
+
+        total_shapes += n_shapes
+        typer.echo(
+            f"[INFO] 任务 ID={task_id} 标注完成：共生成 {n_shapes} 个标注形状。"
         )
-    except Exception as exc:  # noqa: BLE001
-        typer.echo(f"[ERROR] 标注过程出错：{exc}", err=True)
-        raise typer.Exit(code=1)
 
     typer.echo(
-        f"[INFO] 标注完成：共生成 {n_shapes} 个标注形状，已写入任务 ID={task_id}。"
+        f"[INFO] 全部标注完成：共处理 {len(task_ids)} 个任务，生成 {total_shapes} 个标注形状。"
     )
 
 

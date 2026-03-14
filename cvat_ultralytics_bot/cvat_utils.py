@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from cvat_sdk.core.proxies.tasks import Task
     from cvat_sdk.models import IFrameMeta, ILabel
 
-    from .types import Detection
+    from .types import PredictedObject
 
 
 def create_client(
@@ -95,25 +95,25 @@ def build_label_map(
 
 
 def detections_to_shapes(
-    detections: "list[Detection]",
+    predictions: "list[PredictedObject]",
     frame_id: int,
     label_map: dict[str, int],
     use_polygon: bool,
 ) -> list[LabeledShapeRequest]:
-    """Convert model detections to CVAT :class:`LabeledShapeRequest` objects.
+    """Convert model predictions to CVAT :class:`LabeledShapeRequest` objects.
 
     Args:
-        detections: List of detections for a single frame.
+        predictions: List of predictions for a single frame.
         frame_id: Zero-based CVAT frame index.
         label_map: Mapping from model class name (lower-case) to CVAT label ID.
-        use_polygon: If ``True``, prefer polygon shapes when the detection
+        use_polygon: If ``True``, prefer polygon shapes when the prediction
             carries ``polygon_xy``; otherwise always produce rectangles.
 
     Returns:
         List of :class:`LabeledShapeRequest` ready for upload.
     """
     shapes: list[LabeledShapeRequest] = []
-    for det in detections:
+    for det in predictions:
         label_id = label_map.get(det.class_name) or label_map.get(det.class_name.lower())
         if label_id is None:
             continue  # unmapped class – skip silently

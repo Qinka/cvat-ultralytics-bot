@@ -9,7 +9,7 @@ import numpy as np
 
 from cvat_ultralytics_bot.annotation_tools.base import AnnotationToolRegistration
 from cvat_ultralytics_bot.annotation_tools.registry import register_tool
-from cvat_ultralytics_bot.types import Detection
+from cvat_ultralytics_bot.types import PredictedObject
 
 if TYPE_CHECKING:
     from PIL.Image import Image
@@ -30,9 +30,9 @@ class YoloSamTool:
         self._sam = SAM(self.sam_weights)
         self.tool_name = "yolo_sam"
 
-    def predict(self, image: "Image", conf: float = 0.25) -> list[Detection]:
+    def predict(self, image: "Image", conf: float = 0.25) -> list[PredictedObject]:
         yolo_results = self._yolo.predict(image, conf=conf, device=self.device, verbose=False)
-        detections: list[Detection] = []
+        predictions: list[PredictedObject] = []
         for result in yolo_results:
             if result.boxes is None or len(result.boxes) == 0:
                 continue
@@ -45,15 +45,15 @@ class YoloSamTool:
                 if sam_result.masks is not None and len(sam_result.masks.xy) > 0:
                     pts: np.ndarray = sam_result.masks.xy[0]
                     polygon = pts.flatten().tolist()
-                detections.append(
-                    Detection(
+                predictions.append(
+                    PredictedObject(
                         class_name=self._yolo.names[cls_id],
                         confidence=float(confidence),
                         bbox_xyxy=bboxes[index],
                         polygon_xy=polygon,
                     )
                 )
-        return detections
+        return predictions
 
 
 def build_tool(config: dict[str, Any]):

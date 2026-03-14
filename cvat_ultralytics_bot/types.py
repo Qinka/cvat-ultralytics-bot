@@ -1,4 +1,4 @@
-"""Shared types for annotation tools and detections."""
+"""Shared types for annotation tools and predictions."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class Detection:
-    """A single detection result from a model."""
+class PredictedObject:
+    """A single prediction result from a model (detection or segmentation)."""
 
     class_name: str
     confidence: float
@@ -26,5 +26,5 @@ class AnnotationTool(Protocol):
     def tool_name(self) -> str:
         """Unique tool identifier."""
 
-    def predict(self, image: "Image", conf: float = 0.25) -> list[Detection]:
-        """Run inference and return detections."""
+    def predict(self, image: "Image", conf: float = 0.25) -> list[PredictedObject]:
+        """Run inference and return predictions."""
