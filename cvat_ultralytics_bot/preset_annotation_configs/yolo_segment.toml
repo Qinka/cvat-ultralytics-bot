@@ -1,0 +1,10 @@
+tool = "yolo_segment"
+
+[yolo_segment]
+weights = "yolo26n-seg.pt"
+conf = 0.25
+device = "cpu"
+replace = false
+
+[yolo_segment.label_map]
+# person = "person"

@@ -5,9 +5,14 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from cvat_sdk.models import LabeledDataRequest, PatchedLabeledDataRequest
 
-from cvat_ultralytics_bot.cvat_utils import build_label_map, detections_to_shapes
-from cvat_ultralytics_bot.models import Detection
+from cvat_ultralytics_bot.cvat_utils import (
+    build_label_map,
+    detections_to_shapes,
+    upload_annotations,
+)
+from cvat_ultralytics_bot.types import Detection
 
 
 def _make_label(name: str, label_id: int) -> MagicMock:
@@ -109,3 +114,33 @@ class TestDetectionsToShapes:
         assert len(shapes) == 2
         assert shapes[0].label_id == 1
         assert shapes[1].label_id == 2
+
+
+class TestUploadAnnotations:
+    def test_append_uses_patched_request(self):
+        task = MagicMock()
+        shapes = [
+            Detection("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
+        ]
+        labeled_shapes = detections_to_shapes(shapes, frame_id=0, label_map={"person": 1}, use_polygon=False)
+
+        upload_annotations(task, labeled_shapes, replace=False)
+
+        task.update_annotations.assert_called_once()
+        payload = task.update_annotations.call_args.args[0]
+        assert isinstance(payload, PatchedLabeledDataRequest)
+        task.set_annotations.assert_not_called()
+
+    def test_replace_uses_full_request(self):
+        task = MagicMock()
+        shapes = [
+            Detection("person", 0.9, [0.0, 0.0, 10.0, 10.0]),
+        ]
+        labeled_shapes = detections_to_shapes(shapes, frame_id=0, label_map={"person": 1}, use_polygon=False)
+
+        upload_annotations(task, labeled_shapes, replace=True)
+
+        task.set_annotations.assert_called_once()
+        payload = task.set_annotations.call_args.args[0]
+        assert isinstance(payload, LabeledDataRequest)
+        task.update_annotations.assert_not_called()

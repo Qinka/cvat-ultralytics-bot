@@ -32,3 +32,6 @@ Thumbs.db
 *.pth
 *.onnx
 *.torchscript
+
+
+.tmp*
