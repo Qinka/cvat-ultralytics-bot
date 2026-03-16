@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     from PIL.Image import Image
 
 
+# TODO: 已知问题，标注会存在一个目标多个框子的情况，这个应该是分割转
+
+
 @dataclass
 class Sam3Tool:
     """SAM3 image segmentation with automatic mask generation."""
@@ -84,7 +87,10 @@ class Sam3Tool:
                 boxes = result.get("boxes", [])
                 scores = result.get("scores", torch.ones(len(masks)))
 
-                for i, mask in enumerate(masks):
+                # print(boxes)
+                # breakpoint()
+
+                for i, (mask, box) in enumerate(zip(masks, boxes)):
                     # Get bounding box from mask
                     mask_np = mask.cpu().numpy()
                     if len(mask_np.shape) == 2:
