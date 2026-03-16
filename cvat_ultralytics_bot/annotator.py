@@ -35,6 +35,36 @@ def build_model(
     return registration.factory(merged_config)
 
 
+def resolve_task_frame_ids(
+    task: "Task",
+    frame_ids: list[int] | None = None,
+) -> list[int]:
+    """Resolve the actual frame ids that should be processed for a task."""
+    if frame_ids is not None:
+        return list(frame_ids)
+
+    frames_info = task.get_frames_info()
+    is_video_task = (
+        len(frames_info) == 1
+        and hasattr(frames_info[0], "name")
+        and frames_info[0].name.lower().endswith((".mp4", ".avi", ".mov", ".mkv", ".webm"))
+    )
+
+    if not is_video_task:
+        return list(range(len(frames_info)))
+
+    try:
+        task_meta = task.get_meta()
+        start_frame = task_meta.get("start_frame", 0)
+        stop_frame = task_meta.get("stop_frame", 0)
+        if isinstance(start_frame, int) and isinstance(stop_frame, int) and stop_frame >= start_frame:
+            return list(range(start_frame, stop_frame + 1))
+    except Exception:
+        pass
+
+    return [0]
+
+
 def annotate_task(
     task: "Task",
     model: AnnotationTool,
@@ -75,10 +105,7 @@ def annotate_task(
     # Build label map from CVAT labels
     cvat_labels = task.get_labels()
     label_map = build_label_map(cvat_labels, user_label_map)
-
-    frames_info = task.get_frames_info()
-    if frame_ids is None:
-        frame_ids = list(range(len(frames_info)))
+    frame_ids = resolve_task_frame_ids(task, frame_ids)
 
     uploaded_shapes = 0
 

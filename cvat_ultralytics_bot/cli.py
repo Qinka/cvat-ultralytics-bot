@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+import traceback
 from pathlib import Path
 
 import typer
@@ -11,8 +12,22 @@ import typer
 app = typer.Typer(
     name="cvat-bot",
     help="基于 ultralytics YOLO/SAM 对 CVAT 任务进行自动标注。",
-    add_completion=False,
+    # add_completion=False,
 )
+
+
+# Global verbose flag
+VERBOSE = False
+
+
+def _handle_error(message: str, exc: Exception) -> None:
+    """Print error message with optional traceback."""
+    typer.echo(f"[ERROR] {message}：{exc}", err=True)
+    if VERBOSE:
+        typer.echo(traceback.format_exc())
+
+
+@app.command("create-connection-config")
 
 
 def _builtin_preset_dir() -> Path:
@@ -104,6 +119,18 @@ def annotate(
         "-A",
         help="标注配置 TOML 文件路径，或内置预设文件名。",
     ),
+    replace: bool = typer.Option(
+        False,
+        "--replace",
+        "-r",
+        help="在标注前清除旧标注。",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="显示详细的调试信息（包含调用栈）。",
+    ),
 ) -> None:
     """对 CVAT 任务中的图像帧执行自动标注。
 
@@ -111,7 +138,10 @@ def annotate(
     然后将结果作为标注写回到任务中。
     支持一次指定多个任务 ID 进行批量处理。
     """
-    from .annotator import annotate_task, build_model
+    global VERBOSE
+    VERBOSE = verbose
+
+    from .annotator import annotate_task, build_model, resolve_task_frame_ids
     from .annotation_tools import discover_tools, get_tool_registration
     from .config import load_annotation_config, load_connection_config
     from .cvat_utils import create_client, get_task
@@ -123,7 +153,7 @@ def annotate(
         conn = load_connection_config(connection_config)
         ann = load_annotation_config(annotation_config_path)
     except Exception as exc:  # noqa: BLE001
-        typer.echo(f"[ERROR] 配置加载失败：{exc}", err=True)
+        _handle_error("配置加载失败", exc)
         raise typer.Exit(code=1)
 
     # ---------- Load model ----------
@@ -136,7 +166,7 @@ def annotate(
             device=ann.device,
         )
     except Exception as exc:  # noqa: BLE001
-        typer.echo(f"[ERROR] 标注工具加载失败：{exc}", err=True)
+        _handle_error("标注工具加载失败", exc)
         raise typer.Exit(code=1)
 
     # ---------- Connect to CVAT ----------
@@ -144,7 +174,7 @@ def annotate(
     try:
         client = create_client(host=conn.host, username=conn.username, password=conn.password)
     except Exception as exc:  # noqa: BLE001
-        typer.echo(f"[ERROR] 连接 CVAT 失败：{exc}", err=True)
+        _handle_error("连接 CVAT 失败", exc)
         raise typer.Exit(code=1)
 
     # ---------- Annotate each task ----------
@@ -154,11 +184,11 @@ def annotate(
             typer.echo(f"[INFO] 获取任务 ID={task_id}")
             task = get_task(client, task_id)
         except Exception as exc:  # noqa: BLE001
-            typer.echo(f"[ERROR] 获取任务失败：{exc}", err=True)
+            _handle_error("获取任务失败", exc)
             raise typer.Exit(code=1)
 
-        frames_info = task.get_frames_info()
-        n_frames = len(ann.frame_ids) if ann.frame_ids is not None else len(frames_info)
+        frame_ids = resolve_task_frame_ids(task, ann.frame_ids)
+        n_frames = len(frame_ids)
         typer.echo(
             f"[INFO] 开始标注任务 ID={task_id}，共 {n_frames} 帧"
             f"{'（全量）' if ann.frame_ids is None else '（指定帧）'}。"
@@ -173,6 +203,8 @@ def annotate(
                 f"[INFO]   frame_id={frame_id} detected={detection_count} uploaded={uploaded_count}"
             )
 
+
+
         try:
             n_shapes = annotate_task(
                 task=task,
@@ -180,13 +212,13 @@ def annotate(
                 use_polygon=registration.use_polygon,
                 conf=ann.conf,
                 user_label_map=ann.label_map,
-                replace=ann.replace,
-                frame_ids=ann.frame_ids,
+                replace=replace,
+                frame_ids=frame_ids,
                 progress_callback=_progress,
                 frame_result_callback=_frame_result,
             )
         except Exception as exc:  # noqa: BLE001
-            typer.echo(f"[ERROR] 标注过程出错：{exc}", err=True)
+            _handle_error("标注过程出错", exc)
             raise typer.Exit(code=1)
 
         total_shapes += n_shapes

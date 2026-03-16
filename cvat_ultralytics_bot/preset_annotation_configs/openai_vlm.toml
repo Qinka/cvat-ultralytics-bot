@@ -1,0 +1,13 @@
+tool = "openai_vlm"
+
+[openai_vlm]
+# API endpoint (supports OpenAI-compatible APIs like Ollama, vLLM, etc.)
+api_base = "http://localhost:11434/v1"
+model = "llava"
+api_key = ""  # Optional: leave empty for local models
+temperature = 0.0
+timeout = 120
+
+[openai_vlm.label_map]
+# Map model output class names to desired labels
+# e.g., "person" = "person"

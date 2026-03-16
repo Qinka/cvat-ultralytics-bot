@@ -1,12 +1,13 @@
-tool = "yolo_sam"
+tool = "yolo_sam3"
 
-[yolo_sam]
+[yolo_sam3]
+# YOLO detection + SAM3 segmentation
 yolo_weights = "yolo26n.pt"
-sam_weights = "sam2_b.pt"
+sam3_weights = "facebook/sam3"
 conf = 0.25
 device = "cpu"
 # 是否使用多边形（实例分割），设为 false 则只输出 bounding box
 use_polygon = true
 
-[yolo_sam.label_map]
+[yolo_sam3.label_map]
 # person = "person"

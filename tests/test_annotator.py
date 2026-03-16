@@ -10,7 +10,7 @@ from cvat_sdk.models import PatchedLabeledDataRequest
 from PIL import Image
 
 from cvat_ultralytics_bot.annotator import annotate_task, build_model
-from cvat_ultralytics_bot.types import Detection
+from cvat_ultralytics_bot.types import PredictedObject
 
 
 class TestBuildModel:
@@ -81,8 +81,8 @@ class TestAnnotateTask:
         class FakeModel:
             def predict(self, image, conf):
                 return [
-                    Detection("person", 0.9, [10.0, 20.0, 100.0, 200.0]),
-                    Detection("car", 0.8, [30.0, 30.0, 200.0, 200.0]),
+                    PredictedObject("person", 0.9, [10.0, 20.0, 100.0, 200.0]),
+                    PredictedObject("car", 0.8, [30.0, 30.0, 200.0, 200.0]),
                 ]
 
         progress_calls = []
@@ -116,7 +116,7 @@ class TestAnnotateTask:
 
         class FakeModel:
             def predict(self, image, conf):
-                return [Detection("person", 0.9, [0.0, 0.0, 10.0, 10.0])]
+                return [PredictedObject("person", 0.9, [0.0, 0.0, 10.0, 10.0])]
 
         annotate_task(
             task=task,
@@ -160,7 +160,7 @@ class TestAnnotateTask:
         class FakeModel:
             def predict(self, image, conf):
                 return [
-                    Detection(
+                    PredictedObject(
                         "person",
                         0.9,
                         [0.0, 0.0, 100.0, 100.0],
@@ -216,7 +216,7 @@ class TestAnnotateTask:
         class FakeModel:
             def predict(self, image, conf):
                 seen_pixels.append(image.getpixel((0, 0)))
-                return [Detection("person", 0.9, [0.0, 0.0, 10.0, 10.0])]
+                return [PredictedObject("person", 0.9, [0.0, 0.0, 10.0, 10.0])]
 
         annotate_task(
             task=task,

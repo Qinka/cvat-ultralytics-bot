@@ -128,13 +128,22 @@ def load_annotation_config(path: str | Path) -> AnnotationConfig:
     if not isinstance(tool_section, dict):
         raise ValueError(f"annotation config section '[{tool}]' must be a table")
 
-    shared_keys = {"conf", "device", "replace", "frames", "label_map", "label-map"}
+    shared_keys = {"conf", "device", "replace", "frames", "label_map", "label-map", "use_polygon"}
     tool_config = {
         key: value for key, value in tool_section.items() if key not in shared_keys
     }
-
+    # Also add label_map to tool_config if present (for tools that handle it directly)
     section_label_map = _get_config_value(tool_section, "label_map", "label-map")
     root_label_map = _get_config_value(document, "label_map", "label-map")
+    tool_config["label_map"] = section_label_map if section_label_map is not None else root_label_map
+
+    # Add use_polygon to tool_config if present
+    section_use_polygon = _get_config_value(tool_section, "use_polygon")
+    root_use_polygon = _get_config_value(document, "use_polygon")
+    if section_use_polygon is not None:
+        tool_config["use_polygon"] = section_use_polygon
+    elif root_use_polygon is not None:
+        tool_config["use_polygon"] = root_use_polygon
     section_frames = _get_config_value(tool_section, "frames")
     root_frames = _get_config_value(document, "frames")
     section_conf = _get_config_value(tool_section, "conf")
