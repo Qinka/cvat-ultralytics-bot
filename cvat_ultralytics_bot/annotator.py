@@ -125,7 +125,7 @@ def annotate_task(
         frame_ids: Specific frame indices to annotate. When ``None`` all
             frames in the task are annotated.
         progress_callback: Optional callable invoked after each frame with
-            ``(frame_index, total_frames)`` as arguments.
+            ``(frame_index, total_frames, elapsed_seconds, eta_seconds)`` as arguments.
         frame_result_callback: Optional callable invoked after each frame with
             ``(frame_id, detection_count, uploaded_count)``.
 
@@ -156,6 +156,7 @@ def annotate_task(
         task.remove_annotations()
 
     total = len(frame_ids)
+    total_start_time = time.perf_counter()
     for idx, frame_id in enumerate(frame_ids):
         logger.debug("Processing frame %d (%d/%d)", frame_id, idx + 1, total)
         frame_start_time = time.perf_counter()
@@ -183,13 +184,51 @@ def annotate_task(
         if frame_result_callback:
             frame_result_callback(frame_id, len(detections), uploaded_count)
 
+        # Calculate timing statistics
+        elapsed_total = time.perf_counter() - total_start_time
+        avg_time_per_frame = elapsed_total / (idx + 1)
+        remaining_frames = total - (idx + 1)
+        eta_seconds = avg_time_per_frame * remaining_frames
+
         if progress_callback:
-            progress_callback(idx + 1, total)
+            progress_callback(idx + 1, total, elapsed_total, eta_seconds)
+
+        # Log progress with timing info every 10 frames or at completion
+        if (idx + 1) % 10 == 0 or idx + 1 == total:
+            logger.info(
+                "Progress: %d/%d frames (%.1f%%) | elapsed: %s | ETA: %s",
+                idx + 1, total,
+                (idx + 1) * 100 / total,
+                _format_duration(elapsed_total),
+                _format_duration(eta_seconds)
+            )
 
         frame_elapsed = time.perf_counter() - frame_start_time
         logger.debug("Frame %d processed in %.3fs: %d detections, %d shapes uploaded",
                       frame_id, frame_elapsed, len(detections), uploaded_count)
 
-    logger.info("Annotation completed: %d shapes uploaded to task %s",
-                 uploaded_shapes, task.id)
+    total_elapsed = time.perf_counter() - total_start_time
+    logger.info("Annotation completed: %d shapes uploaded to task %s in %s",
+                uploaded_shapes, task.id, _format_duration(total_elapsed))
     return uploaded_shapes
+
+
+def _format_duration(seconds: float) -> str:
+    """Format duration in seconds to human-readable string.
+
+    Args:
+        seconds: Duration in seconds.
+
+    Returns:
+        Formatted string like "1h 23m 45s", "5m 30s", or "45s".
+    """
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    elif seconds < 3600:
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}m {secs}s"
+    else:
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        return f"{hours}h {minutes}m"

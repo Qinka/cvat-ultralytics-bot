@@ -95,7 +95,7 @@ class TestAnnotateTask:
             user_label_map=None,
             replace=False,
             frame_ids=[0, 1],
-            progress_callback=lambda done, total: progress_calls.append((done, total)),
+            progress_callback=lambda done, total, elapsed, eta: progress_calls.append((done, total, elapsed, eta)),
             frame_result_callback=lambda frame_id, dets, uploaded: frame_result_calls.append(
                 (frame_id, dets, uploaded)
             ),
@@ -103,7 +103,9 @@ class TestAnnotateTask:
 
         # 2 frames × 2 detections = 4 shapes
         assert n == 4
-        assert progress_calls == [(1, 2), (2, 2)]
+        assert len(progress_calls) == 2
+        assert progress_calls[0][0] == 1 and progress_calls[0][1] == 2  # done, total
+        assert progress_calls[1][0] == 2 and progress_calls[1][1] == 2
         assert frame_result_calls == [(0, 2, 2), (1, 2, 2)]
         assert task.update_annotations.call_count == 2
         task.remove_annotations.assert_not_called()

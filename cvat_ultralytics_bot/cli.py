@@ -31,6 +31,27 @@ def _handle_error(message: str, exc: Exception) -> None:
         logger.exception(message)
 
 
+def format_duration(seconds: float) -> str:
+    """Format duration in seconds to human-readable string.
+
+    Args:
+        seconds: Duration in seconds.
+
+    Returns:
+        Formatted string like "1h 23m 45s", "5m 30s", or "45s".
+    """
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    elif seconds < 3600:
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}m {secs}s"
+    else:
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        return f"{hours}h {minutes}m"
+
+
 @app.command("create-connection-config")
 
 
@@ -204,9 +225,13 @@ def annotate(
             f"{'（全量）' if ann.frame_ids is None else '（指定帧）'}。"
         )
 
-        def _progress(done: int, total: int) -> None:
+        def _progress(done: int, total: int, elapsed: float, eta: float) -> None:
             pct = done * 100 // total
-            typer.echo(f"[INFO]   帧 {done}/{total}  ({pct}%)")
+            typer.echo(
+                f"[INFO]   帧 {done}/{total} ({pct}%) | "
+                f"已用时: {format_duration(elapsed)} | "
+                f"预计剩余: {format_duration(eta)}"
+            )
 
         def _frame_result(frame_id: int, detection_count: int, uploaded_count: int) -> None:
             typer.echo(
