@@ -1,4 +1,15 @@
-"""YOLO detection annotation tool."""
+"""YOLO detection annotation tool.
+
+This module provides a wrapper around Ultralytics YOLO models for
+object detection tasks. The tool takes images and returns bounding
+box predictions with class labels and confidence scores.
+
+Example:
+    >>> tool = YoloDetectTool(weights="yolov8n.pt", device="cpu")
+    >>> predictions = tool.predict(image, conf=0.25)
+    >>> for pred in predictions:
+    ...     print(pred.class_name, pred.confidence, pred.bbox_xyxy)
+"""
 
 from __future__ import annotations
 
@@ -15,7 +26,20 @@ if TYPE_CHECKING:
 
 @dataclass
 class YoloDetectTool:
-    """Ultralytics YOLO object detector."""
+    """Ultralytics YOLO object detector.
+
+    This tool wraps an Ultralytics YOLO model for object detection.
+    It provides a simple interface to run inference on images and
+    returns predictions as :class:`PredictedObject` instances.
+
+    Attributes:
+        weights: Path to YOLO weights file (e.g., ``yolov8n.pt``).
+        device: Device to run inference on (e.g., ``"cpu"``, ``"cuda:0"``).
+
+    Note:
+        The model is loaded lazily on first prediction to avoid
+        blocking the main thread during initialization.
+    """
 
     weights: str
     device: str = "cpu"
@@ -27,6 +51,18 @@ class YoloDetectTool:
         self.tool_name = "yolo_detect"
 
     def predict(self, image: "Image", conf: float = 0.25) -> list[PredictedObject]:
+        """Run object detection on an image.
+
+        Args:
+            image: Input image as PIL Image.
+            conf: Confidence threshold for predictions.
+
+        Returns:
+            List of :class:`PredictedObject` instances, each containing:
+            - ``class_name``: Predicted class label.
+            - ``confidence``: Prediction confidence score.
+            - ``bbox_xyxy``: Bounding box in xyxy format.
+        """
         results = self._model.predict(image, conf=conf, device=self.device, verbose=False)
         predictions: list[PredictedObject] = []
         for result in results:
@@ -45,7 +81,15 @@ class YoloDetectTool:
         return predictions
 
 
-def build_tool(config: dict[str, Any]):
+def build_tool(config: dict[str, Any]) -> YoloDetectTool:
+    """Build a YoloDetectTool from configuration dictionary.
+
+    Args:
+        config: Dictionary with ``weights`` and optional ``device`` keys.
+
+    Returns:
+        Configured YoloDetectTool instance.
+    """
     return YoloDetectTool(weights=str(config["weights"]), device=str(config.get("device", "cpu")))
 
 

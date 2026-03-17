@@ -9,6 +9,10 @@ from pathlib import Path
 
 import typer
 
+from .logging_config import get_logger, setup_logging
+
+logger = get_logger(__name__)
+
 app = typer.Typer(
     name="cvat-bot",
     help="基于 ultralytics YOLO/SAM 对 CVAT 任务进行自动标注。",
@@ -22,9 +26,9 @@ VERBOSE = False
 
 def _handle_error(message: str, exc: Exception) -> None:
     """Print error message with optional traceback."""
-    typer.echo(f"[ERROR] {message}：{exc}", err=True)
+    logger.error("%s: %s", message, exc)
     if VERBOSE:
-        typer.echo(traceback.format_exc())
+        logger.exception(message)
 
 
 @app.command("create-connection-config")
@@ -140,6 +144,12 @@ def annotate(
     """
     global VERBOSE
     VERBOSE = verbose
+
+    # Setup logging based on verbose flag
+    log_level = "DEBUG" if verbose else "INFO"
+    setup_logging(level=log_level)
+    logger.info("Starting cvat-bot annotate command")
+    logger.debug("Verbose mode enabled")
 
     from .annotator import annotate_task, build_model, resolve_task_frame_ids
     from .annotation_tools import discover_tools, get_tool_registration

@@ -1,4 +1,17 @@
-"""Load annotation and connection config files."""
+"""Load annotation and connection config files.
+
+This module provides configuration loading for the CVAT bot:
+- :class:`ConnectionConfig`: Dataclass for CVAT connection credentials.
+- :class:`AnnotationConfig`: Dataclass for annotation task settings.
+- Functions to encrypt/decrypt connection configs.
+- Functions to load TOML annotation configs.
+
+Example:
+    >>> from cvat_ultralytics_bot.config import load_connection_config
+    >>> conn = load_connection_config("connection.json")
+    >>> print(conn.host)
+    http://localhost:8080
+"""
 
 from __future__ import annotations
 
@@ -15,9 +28,20 @@ except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib  # type: ignore[import-not-found]
 
 
+from .logging_config import get_logger
+
+logger = get_logger(__name__)
+
+
 @dataclass(frozen=True)
 class ConnectionConfig:
-    """Decrypted CVAT connection settings."""
+    """Decrypted CVAT connection settings.
+
+    Attributes:
+        host: CVAT server URL (e.g., ``http://localhost:8080``).
+        username: CVAT account username.
+        password: CVAT account password.
+    """
 
     host: str
     username: str
@@ -26,7 +50,17 @@ class ConnectionConfig:
 
 @dataclass(frozen=True)
 class AnnotationConfig:
-    """Annotation execution settings loaded from TOML."""
+    """Annotation execution settings loaded from TOML.
+
+    Attributes:
+        tool: Name of the annotation tool to use.
+        conf: Confidence threshold for predictions.
+        device: Device for model inference (e.g., ``"cpu"``, ``"cuda:0"``).
+        replace: Whether to replace existing annotations.
+        frame_ids: Specific frame IDs to annotate, or None for all.
+        label_map: Mapping from model class names to CVAT label names.
+        tool_config: Tool-specific configuration dictionary.
+    """
 
     tool: str
     conf: float
@@ -51,6 +85,12 @@ def encrypt_connection_payload(payload: dict[str, str]) -> tuple[str, str]:
     This is lightweight reversible obfuscation based on SHA-256 derived bytes
     and base64. It avoids storing credentials in clear text, but is not a
     substitute for real encryption or a secret manager.
+
+    Args:
+        payload: Dictionary containing connection details (host, username, password).
+
+    Returns:
+        Tuple of (encrypted_payload, checksum_hex).
     """
     raw = json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
     checksum = _checksum_bytes(raw)
@@ -59,17 +99,40 @@ def encrypt_connection_payload(payload: dict[str, str]) -> tuple[str, str]:
 
 
 def decrypt_connection_payload(cipher_text: str, checksum_hex: str) -> dict[str, str]:
-    """De-obfuscate a connection payload and verify its checksum."""
+    """De-obfuscate a connection payload and verify its checksum.
+
+    Args:
+        cipher_text: Base64-encoded encrypted payload.
+        checksum_hex: Hex-encoded SHA256 checksum for verification.
+
+    Returns:
+        Dictionary with decrypted connection details.
+
+    Raises:
+        ValueError: If checksum verification fails.
+    """
     encrypted = base64.urlsafe_b64decode(cipher_text.encode("ascii"))
     checksum = bytes.fromhex(checksum_hex)
     raw = _xor_bytes(encrypted, checksum)
     if _checksum_bytes(raw).hex() != checksum_hex:
+        logger.error("Connection config checksum verification failed")
         raise ValueError("Connection config checksum verification failed")
     return json.loads(raw.decode("utf-8"))
 
 
 def dump_connection_config(path: str | Path, host: str, username: str, password: str) -> Path:
-    """Write an obfuscated connection config file."""
+    """Write an obfuscated connection config file.
+
+    Args:
+        path: Output file path.
+        host: CVAT server URL.
+        username: CVAT account username.
+        password: CVAT account password.
+
+    Returns:
+        Path to the created config file.
+    """
+    logger.debug("Creating connection config at: %s", path)
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     encrypted, checksum = encrypt_connection_payload(
@@ -82,14 +145,27 @@ def dump_connection_config(path: str | Path, host: str, username: str, password:
         "payload": encrypted,
     }
     target.write_text(json.dumps(document, indent=2), encoding="utf-8")
+    logger.info("Connection config written to: %s", target)
     return target
 
 
 def load_connection_config(path: str | Path) -> ConnectionConfig:
-    """Read and de-obfuscate a connection config file."""
+    """Read and de-obfuscate a connection config file.
+
+    Args:
+        path: Path to the config file.
+
+    Returns:
+        ConnectionConfig with decrypted credentials.
+
+    Raises:
+        ValueError: If config file is invalid or checksum fails.
+    """
+    logger.debug("Loading connection config from: %s", path)
     source = Path(path)
     document = json.loads(source.read_text(encoding="utf-8"))
     payload = decrypt_connection_payload(document["payload"], document["checksum"])
+    logger.debug("Connection config loaded for host: %s", payload.get("host"))
     return ConnectionConfig(**payload)
 
 

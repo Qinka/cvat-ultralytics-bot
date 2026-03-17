@@ -13,12 +13,18 @@ from cvat_sdk.models import (
     ShapeType,
 )
 
+from .logging_config import get_logger
+
 if TYPE_CHECKING:
     from cvat_sdk import Client
     from cvat_sdk.core.proxies.tasks import Task
     from cvat_sdk.models import IFrameMeta, ILabel
 
     from .types import PredictedObject
+
+
+# Module-level logger
+logger = get_logger(__name__)
 
 
 def create_client(
@@ -35,8 +41,14 @@ def create_client(
 
     Returns:
         An authenticated :class:`cvat_sdk.Client`.
+
+    Raises:
+        Exception: If authentication fails.
     """
-    return make_client(host=host, credentials=(username, password))
+    logger.debug("Creating CVAT client for host: %s", host)
+    client = make_client(host=host, credentials=(username, password))
+    logger.info("Successfully connected to CVAT at %s", host)
+    return client
 
 
 def get_task(client: "Client", task_id: int) -> "Task":
@@ -48,8 +60,14 @@ def get_task(client: "Client", task_id: int) -> "Task":
 
     Returns:
         The :class:`~cvat_sdk.core.proxies.tasks.Task` proxy object.
+
+    Raises:
+        Exception: If the task cannot be retrieved.
     """
-    return client.tasks.retrieve(task_id)
+    logger.debug("Retrieving task with ID: %d", task_id)
+    task = client.tasks.retrieve(task_id)
+    logger.debug("Retrieved task: name=%s, id=%d", task.name, task.id)
+    return task
 
 
 def build_label_map(
@@ -154,10 +172,17 @@ def upload_annotations(
         shapes: Shapes to upload.
         replace: If ``True``, the existing annotations are fully replaced.
             If ``False`` (default), new shapes are appended.
+
+    Note:
+        This function logs at DEBUG level for each upload operation.
     """
+    action = "replace" if replace else "create"
+    logger.debug("Uploading %d shapes to task %d (action=%s)",
+                 len(shapes), task.id, action)
     if replace:
         data = LabeledDataRequest(shapes=shapes)
         task.set_annotations(data)
     else:
         data = PatchedLabeledDataRequest(shapes=shapes)
         task.update_annotations(data, action=AnnotationUpdateAction.CREATE)
+    logger.debug("Successfully uploaded annotations to task %d", task.id)
