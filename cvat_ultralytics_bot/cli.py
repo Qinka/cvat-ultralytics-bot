@@ -129,7 +129,7 @@ def write_presets(
 @app.command()
 def annotate(
     task_ids: list[int] = typer.Argument(
-        ...,
+        None,
         help="CVAT 任务 ID（数字），可指定多个。",
     ),
     connection_config: Path = typer.Option(
@@ -143,6 +143,12 @@ def annotate(
         "--annotation-config",
         "-A",
         help="标注配置 TOML 文件路径，或内置预设文件名。",
+    ),
+    project_id: int | None = typer.Option(
+        None,
+        "--project-id",
+        "-p",
+        help="CVAT Project ID，指定后自动获取其下所有任务进行标注。",
     ),
     replace: bool = typer.Option(
         False,
@@ -161,7 +167,8 @@ def annotate(
 
     程序会读取连接配置和标注配置，连接到 CVAT，逐帧获取图像并通过指定工具执行推理，
     然后将结果作为标注写回到任务中。
-    支持一次指定多个任务 ID 进行批量处理。
+    支持一次指定多个任务 ID 进行批量处理，或通过 --project-id / -p 选项指定
+    一个 Project，自动获取其下所有任务进行标注。
     """
     global VERBOSE
     VERBOSE = verbose
@@ -175,7 +182,7 @@ def annotate(
     from .annotator import annotate_task, build_model, resolve_task_frame_ids
     from .annotation_tools import discover_tools, get_tool_registration
     from .config import load_annotation_config, load_connection_config
-    from .cvat_utils import create_client, get_task
+    from .cvat_utils import create_client, get_project_task_ids, get_task
 
     discover_tools()
 
@@ -185,6 +192,29 @@ def annotate(
         ann = load_annotation_config(annotation_config_path)
     except Exception as exc:  # noqa: BLE001
         _handle_error("配置加载失败", exc)
+        raise typer.Exit(code=1)
+
+    # ---------- Connect to CVAT ----------
+    typer.echo(f"[INFO] 连接 CVAT 服务器：{conn.host}")
+    try:
+        client = create_client(host=conn.host, username=conn.username, password=conn.password)
+    except Exception as exc:  # noqa: BLE001
+        _handle_error("连接 CVAT 失败", exc)
+        raise typer.Exit(code=1)
+
+    # ---------- Resolve task IDs from project or arguments ----------
+    if project_id is not None:
+        try:
+            typer.echo(f"[INFO] 获取 Project ID={project_id} 下的所有任务")
+            resolved_task_ids = get_project_task_ids(client, project_id)
+            typer.echo(f"[INFO] Project ID={project_id} 共包含 {len(resolved_task_ids)} 个任务")
+        except Exception as exc:  # noqa: BLE001
+            _handle_error("获取 Project 任务列表失败", exc)
+            raise typer.Exit(code=1)
+    elif task_ids:
+        resolved_task_ids = task_ids
+    else:
+        typer.secho("[ERROR] 必须指定 --project-id 或提供至少一个任务 ID", fg="red")
         raise typer.Exit(code=1)
 
     # ---------- Load model ----------
@@ -200,17 +230,9 @@ def annotate(
         _handle_error("标注工具加载失败", exc)
         raise typer.Exit(code=1)
 
-    # ---------- Connect to CVAT ----------
-    typer.echo(f"[INFO] 连接 CVAT 服务器：{conn.host}")
-    try:
-        client = create_client(host=conn.host, username=conn.username, password=conn.password)
-    except Exception as exc:  # noqa: BLE001
-        _handle_error("连接 CVAT 失败", exc)
-        raise typer.Exit(code=1)
-
     # ---------- Annotate each task ----------
     total_shapes = 0
-    for task_id in task_ids:
+    for task_id in resolved_task_ids:
         try:
             typer.echo(f"[INFO] 获取任务 ID={task_id}")
             task = get_task(client, task_id)
@@ -238,8 +260,6 @@ def annotate(
                 f"[INFO]   frame_id={frame_id} detected={detection_count} uploaded={uploaded_count}"
             )
 
-
-
         try:
             n_shapes = annotate_task(
                 task=task,
@@ -262,7 +282,7 @@ def annotate(
         )
 
     typer.echo(
-        f"[INFO] 全部标注完成：共处理 {len(task_ids)} 个任务，生成 {total_shapes} 个标注形状。"
+        f"[INFO] 全部标注完成：共处理 {len(resolved_task_ids)} 个任务，生成 {total_shapes} 个标注形状。"
     )
 
 

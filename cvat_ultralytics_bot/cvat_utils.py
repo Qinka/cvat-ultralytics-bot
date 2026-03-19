@@ -17,6 +17,7 @@ from .logging_config import get_logger
 
 if TYPE_CHECKING:
     from cvat_sdk import Client
+    from cvat_sdk.core.proxies.projects import Project
     from cvat_sdk.core.proxies.tasks import Task
     from cvat_sdk.models import IFrameMeta, ILabel
 
@@ -68,6 +69,44 @@ def get_task(client: "Client", task_id: int) -> "Task":
     task = client.tasks.retrieve(task_id)
     logger.debug("Retrieved task: name=%s, id=%d", task.name, task.id)
     return task
+
+
+def get_project(client: "Client", project_id: int) -> "Project":
+    """Retrieve a project by its numeric ID.
+
+    Args:
+        client: An authenticated CVAT client.
+        project_id: Numeric ID of the project.
+
+    Returns:
+        The :class:`~cvat_sdk.core.proxies.projects.Project` proxy object.
+
+    Raises:
+        Exception: If the project cannot be retrieved.
+    """
+    logger.debug("Retrieving project with ID: %d", project_id)
+    project = client.projects.retrieve(project_id)
+    logger.debug("Retrieved project: name=%s, id=%d", project.name, project.id)
+    return project
+
+
+def get_project_task_ids(client: "Client", project_id: int) -> list[int]:
+    """Get all task IDs belonging to a project.
+
+    Args:
+        client: An authenticated CVAT client.
+        project_id: Numeric ID of the project.
+
+    Returns:
+        List of task IDs in the project.
+    """
+    logger.debug("Fetching task IDs for project ID: %d", project_id)
+    project = get_project(client, project_id)
+    # Get tasks filtered by project
+    tasks = list(client.tasks.list(getter_params={"project_id": project_id}))
+    task_ids = [t.id for t in tasks]
+    logger.debug("Project %d has %d tasks: %s", project_id, len(task_ids), task_ids)
+    return task_ids
 
 
 def build_label_map(
