@@ -70,6 +70,8 @@ class Sam3Tool:
     def predict(self, image: "Image", conf: float = 0.25) -> list[PredictedObject]:
         import torch
 
+        print("sam3 annotation tool running...")
+
         img_inputs = self._processor(images=image, return_tensors="pt").to(self._device)
         with torch.no_grad():
             vision_embeds = self._model.get_vision_features(pixel_values=img_inputs.pixel_values)
@@ -151,7 +153,7 @@ def build_tool(config: dict[str, Any]):
     return Sam3Tool(
         weights=str(config["weights"]),
         device=str(config.get("device", "cpu")),
-        label_prompts=dict(config.get("label_prompts", None)),
+        label_prompts=dict(config.get("label_prompts")) if config.get("label_prompts") else None,
         # label_map=dict(label_map) if label_map else None,
         use_polygon=bool(config.get("use_polygon", True)),
         threshold=float(config.get("threshold", 0.5)),

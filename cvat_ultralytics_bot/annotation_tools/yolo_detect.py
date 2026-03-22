@@ -63,6 +63,10 @@ class YoloDetectTool:
             - ``confidence``: Prediction confidence score.
             - ``bbox_xyxy``: Bounding box in xyxy format.
         """
+
+
+        print("yolo_detect annotation tool running...")
+
         results = self._model.predict(image, conf=conf, device=self.device, verbose=False)
         predictions: list[PredictedObject] = []
         for result in results:

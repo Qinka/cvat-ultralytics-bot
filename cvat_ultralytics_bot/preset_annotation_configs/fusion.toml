@@ -1,0 +1,28 @@
+# Fusion annotation tool: combines results from multiple tools (YOLO, SAM, VLM)
+# Supported fusion strategies: union, intersection, nms
+
+tool = "fusion"
+
+[fusion]
+# Base confidence threshold for all sub-tools
+conf = 0.25
+device = "cpu"
+
+# Fusion strategy:
+#   - union:       Keep all detections from all tools (default)
+#   - intersection: Keep detections appearing in >= 2 tools
+#   - nms:         Apply IoU-based NMS across all tools
+fusion_strategy = "union"
+
+# IoU threshold for NMS and intersection strategies
+iou_threshold = 0.5
+
+# Sub-tools to run on each image
+[[fusion.tools]]
+type = "yolo_detect"
+weights = "yolo26n.pt"
+device = "cpu"
+weight = 1.0
+
+[fusion.tools.label_map]
+# person = "person"

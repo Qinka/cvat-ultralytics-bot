@@ -103,7 +103,7 @@ def get_project_task_ids(client: "Client", project_id: int) -> list[int]:
     logger.debug("Fetching task IDs for project ID: %d", project_id)
     project = get_project(client, project_id)
     # Get tasks filtered by project
-    tasks = list(client.tasks.list(getter_params={"project_id": project_id}))
+    tasks = project.get_tasks()
     task_ids = [t.id for t in tasks]
     logger.debug("Project %d has %d tasks: %s", project_id, len(task_ids), task_ids)
     return task_ids
