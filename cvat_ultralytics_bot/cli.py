@@ -8,6 +8,7 @@ import traceback
 from pathlib import Path
 
 import typer
+from tqdm import tqdm
 
 from .logging_config import get_logger, setup_logging
 
@@ -232,7 +233,15 @@ def annotate(
 
     # ---------- Annotate each task ----------
     total_shapes = 0
-    for task_id in resolved_task_ids:
+    task_pbar = tqdm(
+        resolved_task_ids,
+        desc="任务进度",
+        unit="任务",
+        position=0,
+        leave=True,
+    )
+    for task_idx, task_id in enumerate(task_pbar):
+        task_pbar.set_postfix_str(f"当前任务: {task_id}")
         try:
             typer.echo(f"[INFO] 获取任务 ID={task_id}")
             task = get_task(client, task_id)
@@ -247,18 +256,28 @@ def annotate(
             f"{'（全量）' if ann.frame_ids is None else '（指定帧）'}。"
         )
 
+        frame_pbar = tqdm(
+            total=n_frames,
+            desc=f"帧进度",
+            unit="帧",
+            position=1,
+            leave=False,
+        )
+
         def _progress(done: int, total: int, elapsed: float, eta: float) -> None:
-            pct = done * 100 // total
-            typer.echo(
-                f"[INFO]   帧 {done}/{total} ({pct}%) | "
-                f"已用时: {format_duration(elapsed)} | "
-                f"预计剩余: {format_duration(eta)}"
-            )
+            frame_pbar.n = done
+            frame_pbar.set_postfix({
+                "已用时": format_duration(elapsed),
+                "预计剩余": format_duration(eta),
+            })
+            frame_pbar.refresh()
 
         def _frame_result(frame_id: int, detection_count: int, uploaded_count: int) -> None:
-            typer.echo(
-                f"[INFO]   frame_id={frame_id} detected={detection_count} uploaded={uploaded_count}"
-            )
+            frame_pbar.set_postfix({
+                "frame_id": frame_id,
+                "detected": detection_count,
+                "uploaded": uploaded_count,
+            })
 
         try:
             n_shapes = annotate_task(
@@ -276,6 +295,7 @@ def annotate(
             _handle_error("标注过程出错", exc)
             raise typer.Exit(code=1)
 
+        frame_pbar.close()
         total_shapes += n_shapes
         typer.echo(
             f"[INFO] 任务 ID={task_id} 标注完成：共生成 {n_shapes} 个标注形状。"
