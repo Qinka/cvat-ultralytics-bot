@@ -12,6 +12,8 @@ import os
 import sys
 from typing import Any
 
+from tqdm import tqdm
+
 # Default log format
 DEFAULT_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -87,9 +89,20 @@ def setup_logging(
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
+    class TqdmLoggingHandler(logging.Handler):
+        """Logging handler that uses tqdm.write() to avoid breaking progress bars."""
+
+        def emit(self, record: logging.LogRecord) -> None:
+            try:
+                msg = self.format(record)
+                tqdm.write(msg)
+                self.flush()
+            except Exception:
+                self.handleError(record)
+
     # Clear existing handlers to avoid duplicate logs
     if not handlers:
-        handlers = [logging.StreamHandler(sys.stderr)]
+        handlers = [TqdmLoggingHandler()]
         # Set formatter for each handler
         formatter = logging.Formatter(log_format, datefmt=date_format)
         for handler in handlers:

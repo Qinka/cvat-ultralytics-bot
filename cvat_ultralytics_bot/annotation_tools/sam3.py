@@ -70,7 +70,7 @@ class Sam3Tool:
     def predict(self, image: "Image", conf: float = 0.25) -> list[PredictedObject]:
         import torch
 
-        print("sam3 annotation tool running...")
+        # print("sam3 annotation tool running...")
 
         img_inputs = self._processor(images=image, return_tensors="pt").to(self._device)
         with torch.no_grad():

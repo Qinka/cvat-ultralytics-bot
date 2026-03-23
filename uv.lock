@@ -726,6 +726,7 @@ dependencies = [
     { name = "simplejson" },
     { name = "sortedcontainers" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "tqdm" },
     { name = "typer" },
     { name = "ultralytics" },
 ]
@@ -751,6 +752,7 @@ requires-dist = [
     { name = "simplejson", specifier = ">=3.0.0" },
     { name = "sortedcontainers", specifier = ">=2.0.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
+    { name = "tqdm", specifier = ">=4.66.0" },
     { name = "typer", specifier = ">=0.12.0" },
     { name = "ultralytics", specifier = ">=8.4.0" },
 ]

@@ -65,7 +65,7 @@ class YoloDetectTool:
         """
 
 
-        print("yolo_detect annotation tool running...")
+        # print("yolo_detect annotation tool running...")
 
         results = self._model.predict(image, conf=conf, device=self.device, verbose=False)
         predictions: list[PredictedObject] = []

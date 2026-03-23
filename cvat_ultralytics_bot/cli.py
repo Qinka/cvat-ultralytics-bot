@@ -196,7 +196,7 @@ def annotate(
         raise typer.Exit(code=1)
 
     # ---------- Connect to CVAT ----------
-    typer.echo(f"[INFO] 连接 CVAT 服务器：{conn.host}")
+    tqdm.write(f"[INFO] 连接 CVAT 服务器：{conn.host}")
     try:
         client = create_client(host=conn.host, username=conn.username, password=conn.password)
     except Exception as exc:  # noqa: BLE001
@@ -206,9 +206,9 @@ def annotate(
     # ---------- Resolve task IDs from project or arguments ----------
     if project_id is not None:
         try:
-            typer.echo(f"[INFO] 获取 Project ID={project_id} 下的所有任务")
+            tqdm.write(f"[INFO] 获取 Project ID={project_id} 下的所有任务")
             resolved_task_ids = get_project_task_ids(client, project_id)
-            typer.echo(f"[INFO] Project ID={project_id} 共包含 {len(resolved_task_ids)} 个任务")
+            tqdm.write(f"[INFO] Project ID={project_id} 共包含 {len(resolved_task_ids)} 个任务")
         except Exception as exc:  # noqa: BLE001
             _handle_error("获取 Project 任务列表失败", exc)
             raise typer.Exit(code=1)
@@ -219,7 +219,7 @@ def annotate(
         raise typer.Exit(code=1)
 
     # ---------- Load model ----------
-    typer.echo(f"[INFO] 加载标注工具：tool={ann.tool}")
+    tqdm.write(f"[INFO] 加载标注工具：tool={ann.tool}")
     try:
         registration = get_tool_registration(ann.tool)
         model = build_model(
@@ -251,7 +251,7 @@ def annotate(
 
         frame_ids = resolve_task_frame_ids(task, ann.frame_ids)
         n_frames = len(frame_ids)
-        typer.echo(
+        tqdm.write(
             f"[INFO] 开始标注任务 ID={task_id}，共 {n_frames} 帧"
             f"{'（全量）' if ann.frame_ids is None else '（指定帧）'}。"
         )
@@ -273,6 +273,9 @@ def annotate(
             frame_pbar.refresh()
 
         def _frame_result(frame_id: int, detection_count: int, uploaded_count: int) -> None:
+            tqdm.write(
+                f"[INFO]   frame_id={frame_id} detected={detection_count} uploaded={uploaded_count}"
+            )
             frame_pbar.set_postfix({
                 "frame_id": frame_id,
                 "detected": detection_count,
