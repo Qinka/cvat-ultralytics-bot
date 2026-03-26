@@ -63,11 +63,12 @@ class YoloDetectTool:
             - ``confidence``: Prediction confidence score.
             - ``bbox_xyxy``: Bounding box in xyxy format.
         """
+        # Use actual image size for YOLO input (rounded to multiple of 32)
+        orig_width, orig_height = image.size
+        max_dim = max(orig_width, orig_height)
+        imgsz = (max_dim // 32) * 32
 
-
-        # print("yolo_detect annotation tool running...")
-
-        results = self._model.predict(image, conf=conf, device=self.device, verbose=False)
+        results = self._model.predict(image, conf=conf, device=self.device, imgsz=imgsz, verbose=False)
         predictions: list[PredictedObject] = []
         for result in results:
             if result.boxes is None:

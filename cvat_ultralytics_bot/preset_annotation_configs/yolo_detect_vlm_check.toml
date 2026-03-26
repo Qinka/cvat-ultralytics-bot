@@ -1,0 +1,26 @@
+tool = "yolo_detect_vlm_check"
+
+# YOLO detection configuration
+# yolo_conf is set very low to catch all potential objects
+[yolo_detect_vlm_check]
+weights = "yolo26n.pt"
+yolo_conf = 0.01
+device = "cpu"
+
+# Optional label mapping for YOLO classes
+# [yolo_detect_vlm_check.label_map]
+# person = "person"
+
+# VLM verification configuration (OpenAI-compatible API)
+# Supports Ollama, vLLM, or other OpenAI-compatible VLMs
+[openai_vlm]
+api_base = "http://localhost:11434/v1"
+model = "llava"
+api_key = ""  # Optional: leave empty for local models
+temperature = 0.0
+timeout = 120
+
+# Optional label mapping for VLM output classes
+# [openai_vlm.label_map]
+# Map model output class names to desired labels
+# e.g., "person" = "person"
